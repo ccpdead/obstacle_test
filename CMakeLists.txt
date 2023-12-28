@@ -158,6 +158,12 @@ target_link_libraries(sync_test
                       ${PCL_LIBRARIES}
                       )
 
+
+add_executable(pcl_filter src/pcl_filter.cpp)
+target_link_libraries(pcl_filter
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
 #############
 ## Install ##
 #############
