@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   message_filters
   rosmsg
+  geometry_msgs
+  nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -152,15 +154,21 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(sync_test src/time_sync.cpp)
-target_link_libraries(sync_test
-                      ${catkin_LIBRARIES}
-                      ${PCL_LIBRARIES}
-                      )
+# add_executable(sync_test src/time_sync.cpp)
+# target_link_libraries(sync_test
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
 
 
-add_executable(pcl_filter src/pcl_filter.cpp)
-target_link_libraries(pcl_filter
+# add_executable(pcl_filter src/pcl_filter.cpp)
+# target_link_libraries(pcl_filter
+#                       ${catkin_LIBqawCDF R`W5}
+#                       ${PCL_LIBRARIES}
+#                       )
+
+add_executable(path src/path.cpp)
+target_link_libraries(path
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )
