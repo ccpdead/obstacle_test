@@ -3,10 +3,13 @@ project(pcl_filter)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
-
+ADD_COMPILE_OPTIONS(-std=c++11 )
+ADD_COMPILE_OPTIONS(-std=c++14 )
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -14,6 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
   rosmsg
   geometry_msgs
   nav_msgs
+  sensor_msgs
+
 )
 
 ## System dependencies are found with CMake's conventions
@@ -119,7 +124,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
 )
@@ -154,11 +159,11 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-# add_executable(sync_test src/time_sync.cpp)
-# target_link_libraries(sync_test
-#                       ${catkin_LIBRARIES}
-#                       ${PCL_LIBRARIES}
-#                       )
+add_executable(sync_test src/time_sync.cpp)
+target_link_libraries(sync_test
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
 
 
 # add_executable(pcl_filter src/pcl_filter.cpp)
@@ -167,8 +172,20 @@ include_directories(
 #                       ${PCL_LIBRARIES}
 #                       )
 
-add_executable(path src/path.cpp)
-target_link_libraries(path
+# add_executable(path src/path.cpp)
+# target_link_libraries(path
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
+
+add_executable(crophull_filter src/crophull_filter.cpp)
+target_link_libraries(crophull_filter
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
+
+add_executable(saved_pcl src/saved_pcl.cpp)
+target_link_libraries(saved_pcl
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )
