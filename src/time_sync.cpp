@@ -21,8 +21,8 @@ struct ROI {
     float min_x = -3.0;
     float max_y = 2.0;
     float min_y = -2.0;
-    float max_z = 2;//1.5
-    float min_z = -1;//-0.4
+    float max_z = 1.5;//1.5
+    float min_z = -0.4;//-0.4
 } ROI;
 
 struct car_box {
@@ -45,62 +45,10 @@ ros::Publisher marker_pub_arm;
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> MySyncPolicy;
 
-//marker_发布
-void Marker_publisher() {
-    visualization_msgs::Marker marker_car;
-    visualization_msgs::Marker marker_arm;
-    marker_car.header.frame_id = "mid360_frame";
-    marker_car.header.stamp = ros::Time::now();
-    marker_car.ns = "";
-    marker_car.id = 0;
-    marker_car.type = visualization_msgs::Marker::CUBE;
-    marker_car.action = visualization_msgs::Marker::ADD;
-
-    // 设置位置和姿态
-    marker_car.pose.position.x = 0.0;
-    marker_car.pose.position.y = 0.0;
-    marker_car.pose.position.z = 0.0;
-    marker_car.pose.orientation.x = 0.0;
-    marker_car.pose.orientation.y = 0.0;
-    marker_car.pose.orientation.z = 0.0;
-    marker_car.pose.orientation.w = 1.0;
-
-    // 设置大小
-    marker_car.scale.x = car_box.car_max_x-car_box.car_min_x;
-    marker_car.scale.y = car_box.car_max_y-car_box.car_min_y;
-    marker_car.scale.z = car_box.car_max_z-car_box.car_min_z;
-
-    // 设置颜色和透明度
-    marker_car.color.r = 0.0;
-    marker_car.color.g = 0.9;
-    marker_car.color.b = 0.0;
-    marker_car.color.a = 0.5;
-    marker_car.lifetime = ros::Duration();  // 持续时间，0表示永久
-    marker_pub_car.publish(marker_car);
-
-    marker_arm = marker_car;
-    marker_arm.pose.position.y = (marker_car.scale.y/2.0+1)*-1;
-
-    marker_arm.scale.x = 0.5;
-    marker_arm.scale.y = 2;
-    marker_arm.scale.z = 1;
-
-    marker_arm.color.r = 0.9;
-    marker_arm.color.g = 0.0;
-    marker_arm.color.b = 0.0;
-    marker_pub_arm.publish(marker_arm);
-
-}
-
 // 回调函数
 void callback(const sensor_msgs::PointCloud2ConstPtr& lidar1, const sensor_msgs::PointCloud2ConstPtr& lidar2) {
-    // // 事实发布的话题
-    // sync_lidar1.publish(*lidar1);
-    // sync_lidar2.publish(*lidar2);
-    // static int i;
-    // printf("times:%d\r\n", i++);
 
-    // 合并点云
+    // 消息转换
     pcl::PointCloud<pcl::PointXYZI> pclCloud1;
     pcl::fromROSMsg(*lidar1, pclCloud1);
 
@@ -131,6 +79,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& lidar1, const sensor_msgs:
     pass.setFilterLimits(ROI.min_z, ROI.max_z);
     pass.filter(pcl_roi);
 
+    //立方体滤波
     pcl::CropBox<pcl::PointXYZI> crop;
     crop.setInputCloud(pcl_roi.makeShared());
     crop.setMin(Eigen::Vector4f(car_box.car_min_x, car_box.car_min_y, car_box.car_min_z, 1.0));  // Set the minimum point of the crop box
@@ -143,10 +92,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& lidar1, const sensor_msgs:
     pcl::toROSMsg(pcl_roi, fusedCloud);
     fusedCloud.header.frame_id = "mid360_frame";
     lidar_fusion.publish(fusedCloud);
-    printf("fusedCloud size:%d\r\n", fusedCloud.data.size());
-
-    //发布marker
-    Marker_publisher();
+    // printf("fusedCloud size:%d\r\n", fusedCloud.data.size());
 }
 
 int main(int argc, char** argv) {
@@ -170,7 +116,6 @@ int main(int argc, char** argv) {
     sync.registerCallback(boost::bind(&callback, _1, _2));
 
     ros::spin();
-    ros::shutdown();
 
     return 0;
 }
