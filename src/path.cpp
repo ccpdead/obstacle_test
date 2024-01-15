@@ -22,10 +22,10 @@ class RobotController {
     RobotController() {
         /*-----------------------------初始化ROS节点------------------------------*/
         ros::NodeHandle nh;
-        odom_subscriber = nh.subscribe("/odom_bunker", 1, &RobotController::odomCallback, this);
+        odom_subscriber = nh.subscribe("/odom", 1, &RobotController::odomCallback, this);
         trajectory_path_pub = nh.advertise<sensor_msgs::PointCloud2>("trajectory_path_pub", 10);
 
-        rslidar_subscriber = nh.subscribe("/rslidar_points", 1, &RobotController::rslidarCallback, this);
+        rslidar_subscriber = nh.subscribe("/lidar_fusion", 1, &RobotController::rslidarCallback, this);
         trajectory_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("trajectory_cloud_pub", 10);
 
         /*------------------------初始化数据类型--------------------------*/
@@ -34,9 +34,6 @@ class RobotController {
         cloud_trajectory.reset(new pcl::PointCloud<pcl::PointXYZ>());
     }
 
-    /**
-     * odom毁掉函数
-     */
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
         // 提取线速度和角速度
         double linear_velocity = msg->twist.twist.linear.x;
@@ -46,9 +43,6 @@ class RobotController {
             generateTrajectory(linear_velocity, angular_velocity);
     }
 
-    /**
-     * 雷达回调函数
-     */
     void rslidarCallback(const sensor_msgs::PointCloud2ConstPtr& msg) {
         pcl::fromROSMsg(*msg, *cloud_rslidar);  // 将ROS消息转换为PCL格式
     }
@@ -95,28 +89,25 @@ class RobotController {
         }
 
         // 检测障碍物点云
-        convexHullFilter(trajectory_point, cloud_rslidar, cloud_trajectory);
-        sensor_msgs::PointCloud2 cloud_trajectory_ros;
+        cloud_trajectory = convexHullFilter(trajectory_point, cloud_rslidar);
+        sensor_msgs::PointCloud2 cloud_trajectory_ros;  // 障碍点云
         pcl::toROSMsg(*cloud_trajectory, cloud_trajectory_ros);
-        cloud_trajectory_ros.header.frame_id = "rslidar";
+        cloud_trajectory_ros.header.frame_id = "mid360_frame";
         cloud_trajectory_ros.header.stamp = ros::Time::now();
 
         sensor_msgs::PointCloud2 trajectory_path;  // 路径点云
         pcl::toROSMsg(*trajectory_point, trajectory_path);
-        trajectory_path.header.frame_id = "rslidar";
+        trajectory_path.header.frame_id = "mid360_frame";
         trajectory_path.header.stamp = ros::Time::now();
 
         trajectory_path_pub.publish(trajectory_path);
-        // trajectory_cloud_pub.publish(cloud_trajectory_ros);
+        trajectory_cloud_pub.publish(cloud_trajectory_ros);
         trajectory_point->clear();
-        cloud_trajectory->clear();
     }
 
     // 路径点云滤波
-    void convexHullFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr path_input,
-                          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered,
-                          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_trajectory) {
-
+    pcl::PointCloud<pcl::PointXYZ>::Ptr convexHullFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr path_input,
+                                                    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered) {
         // 利用圆的分割来过滤点云
         std::vector<int> oddNumbers;
         std::vector<int> evenNumbers;
@@ -154,14 +145,8 @@ class RobotController {
         bb_filter.setHullIndices(polygons);
         bb_filter.setNegative(false);
         bb_filter.filter(*cloud_hull);
-        cloud_trajectory = cloud_hull;
         printf("filted ok...\n");
-
-        sensor_msgs::PointCloud2 cloud_trajectory_ros;
-        pcl::toROSMsg(*cloud_hull, cloud_trajectory_ros);
-        cloud_trajectory_ros.header.frame_id = "rslidar";
-        cloud_trajectory_ros.header.stamp = ros::Time::now();
-        trajectory_cloud_pub.publish(cloud_trajectory_ros);
+        return cloud_hull;
     }
 
     /*--------------------------------------------------------------------------------*/
