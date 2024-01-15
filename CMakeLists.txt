@@ -172,11 +172,11 @@ target_link_libraries(sync_test
 #                       ${PCL_LIBRARIES}
 #                       )
 
-# add_executable(path src/path.cpp)
-# target_link_libraries(path
-#                       ${catkin_LIBRARIES}
-#                       ${PCL_LIBRARIES}
-#                       )
+add_executable(path src/path.cpp)
+target_link_libraries(path
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
 
 add_executable(crophull_filter src/crophull_filter.cpp)
 target_link_libraries(crophull_filter

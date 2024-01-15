@@ -1,26 +1,42 @@
 #include <visualization_msgs/Marker.h>
-#include <cmath>
 #include "geometry_msgs/Twist.h"
 #include "nav_msgs/Odometry.h"
 #include "ros/ros.h"
-#define start M_PI / 180.0f * 180.0f
-#define end M_PI * 2
+#include "sensor_msgs/PointCloud2.h"
+
+#include <pcl/filters/crop_hull.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/surface/concave_hull.h>
+
+#include <pcl/io/io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
+#include <pcl_conversions/pcl_conversions.h>
+
+#include <iostream>
+#include <vector>
 
 class RobotController {
    public:
     RobotController() {
-        // 初始化ROS节点
+        /*-----------------------------初始化ROS节点------------------------------*/
         ros::NodeHandle nh;
-        // 创建订阅器，订阅odom消息
-        odom_subscriber = nh.subscribe("odom", 1, &RobotController::odomCallback, this);
-        // 创建发布器，发布机器人轨迹消息
-        // trajectory_publisher = nh.advertise<geometry_msgs::Twist>("robot_trajectory", 10);
-        marker_pub_in = nh.advertise<visualization_msgs::Marker>("path_in", 10);
-        marker_pub = nh.advertise<visualization_msgs::Marker>("path", 10);
-        marker_pub_out = nh.advertise<visualization_msgs::Marker>("path_out", 10);
+        odom_subscriber = nh.subscribe("/odom_bunker", 1, &RobotController::odomCallback, this);
+        trajectory_path_pub = nh.advertise<sensor_msgs::PointCloud2>("trajectory_path_pub", 10);
+
+        rslidar_subscriber = nh.subscribe("/rslidar_points", 1, &RobotController::rslidarCallback, this);
+        trajectory_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("trajectory_cloud_pub", 10);
+
+        /*------------------------初始化数据类型--------------------------*/
+        trajectory_point.reset(new pcl::PointCloud<pcl::PointXYZ>());  // 初始化变量
+        cloud_rslidar.reset(new pcl::PointCloud<pcl::PointXYZ>());     // 初始化变量
+        cloud_trajectory.reset(new pcl::PointCloud<pcl::PointXYZ>());
     }
 
-    // 回调函数处理odom消息
+    /**
+     * odom毁掉函数
+     */
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
         // 提取线速度和角速度
         double linear_velocity = msg->twist.twist.linear.x;
@@ -30,98 +46,135 @@ class RobotController {
             generateTrajectory(linear_velocity, angular_velocity);
     }
 
-    // 生成机器人轨迹曲线的示例函数
+    /**
+     * 雷达回调函数
+     */
+    void rslidarCallback(const sensor_msgs::PointCloud2ConstPtr& msg) {
+        pcl::fromROSMsg(*msg, *cloud_rslidar);  // 将ROS消息转换为PCL格式
+    }
+
+    /**
+     * 路径生成
+     */
     void generateTrajectory(double linear_velocity, double angular_velocity) {
         // 计算转弯半径
         double turning_radius = linear_velocity / angular_velocity;
+        printf("turning_radius:%f\n", turning_radius);
         // 生成机器人轨迹曲线
-        publisherMaerker(turning_radius, 0.5f);
-        // 打印转弯半径
-        ROS_INFO("Turning Radius: %.2f", turning_radius);
+        publishTrajectory_point(turning_radius, 0.8f);  // 转弯半径，车身宽度
     }
-    // 发布机器人轨迹信息
-    void publisherMaerker(float r, float width) {
-        if (r >= 0) {
-            width = abs(width);
-        } else {
-            width = -abs(width);
-        }
 
-        visualization_msgs::Marker marker;
-        visualization_msgs::Marker marker_in;
-        visualization_msgs::Marker marker_out;
-        marker.header.frame_id = "base_link";  // 设置坐标系，根据你的实际情况修改
-        marker.header.stamp = ros::Time::now();
-        marker.ns = "circle_trajectory";
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.pose.orientation.w = 1.0;
-        // 设置标记类型为线条
-        marker.type = visualization_msgs::Marker::LINE_STRIP;
-        // 设置标记的尺寸和颜色
-        marker.scale.x = 0.05;  // 线条宽度
-        marker.color.r = 1.0;
-        marker.color.g = 0.0;
-        marker.color.b = 0.0;
-        marker.color.a = 1.0;
-
-        marker_in = marker;
-        marker_out = marker;
+    /**
+     * 发布路径
+     */
+    void publishTrajectory_point(float r, float width) {
         // 直线行驶
-        if (abs(r) > 30.0) {
-            geometry_msgs::Point point;
-            point.x = 3.0;
-            point.y = 0.0;
-            point.z = 0.0;
-            marker.points.push_back(point);
-            point.x = -3.0;
-            marker.points.push_back(point);
-
-            point.x = 3.0;
-            point.y = width;
-            marker_out.points.push_back(point);
-            point.x = -3.0;
-            marker_out.points.push_back(point);
-
-            point.x = 3.0;
-            point.y = -width;
-            marker_in.points.push_back(point);
-            point.x = -3.0;
-            marker_in.points.push_back(point);
-        } else {
-            // 曲线行驶
-            for (double theta = start; theta <= end; theta += 0.1) {
+        if (abs(r) > 50.0) {
+            std::vector<geometry_msgs::Point> points;
+            trajectory_point->push_back(pcl::PointXYZ(3.0, width, 0.0));
+            trajectory_point->push_back(pcl::PointXYZ(0.0, width, 0.0));
+            trajectory_point->push_back(pcl::PointXYZ(3.0, -width, 0.0));
+            trajectory_point->push_back(pcl::PointXYZ(0.0, -width, 0.0));
+        } else {  // 曲线行驶
+            float R = 0.05 / r;
+            printf("R:%f\n", R);
+            for (double theta = M_PI; theta <= M_PI * 2; theta += abs(R)) {
                 geometry_msgs::Point point;
                 // 内圆
                 point.x = cos(theta) * (r - width);
                 point.y = sin(theta) * (r - width) + r;
                 point.z = 0.0;
                 if (point.x <= 3.0 && point.x >= 0)
-                    marker_in.points.push_back(point);
-                // 中心圆
-                point.x = cos(theta) * r;
-                point.y = sin(theta) * r + r;
-                if (point.x <= 3.0 && point.x >= 0)
-                    marker.points.push_back(point);
+                    trajectory_point->push_back(pcl::PointXYZ(point.x, point.y, point.z));
                 // 外圆
                 point.x = cos(theta) * (r + width);
                 point.y = sin(theta) * (r + width) + r;
                 if (point.x <= 3.0 && point.x >= 0)
-                    marker_out.points.push_back(point);
+                    trajectory_point->push_back(pcl::PointXYZ(point.x, point.y, point.z));
             }
         }
 
-        marker_pub.publish(marker);
-        marker_pub_in.publish(marker_in);
-        marker_pub_out.publish(marker_out);
+        // 检测障碍物点云
+        convexHullFilter(trajectory_point, cloud_rslidar, cloud_trajectory);
+        sensor_msgs::PointCloud2 cloud_trajectory_ros;
+        pcl::toROSMsg(*cloud_trajectory, cloud_trajectory_ros);
+        cloud_trajectory_ros.header.frame_id = "rslidar";
+        cloud_trajectory_ros.header.stamp = ros::Time::now();
+
+        sensor_msgs::PointCloud2 trajectory_path;  // 路径点云
+        pcl::toROSMsg(*trajectory_point, trajectory_path);
+        trajectory_path.header.frame_id = "rslidar";
+        trajectory_path.header.stamp = ros::Time::now();
+
+        trajectory_path_pub.publish(trajectory_path);
+        // trajectory_cloud_pub.publish(cloud_trajectory_ros);
+        trajectory_point->clear();
+        cloud_trajectory->clear();
     }
 
+    // 路径点云滤波
+    void convexHullFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr path_input,
+                          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered,
+                          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_trajectory) {
+
+        // 利用圆的分割来过滤点云
+        std::vector<int> oddNumbers;
+        std::vector<int> evenNumbers;
+        for (int i = 0; i < path_input->size(); ++i) {
+            if (i % 2 == 0) {
+                evenNumbers.push_back(i);
+            } else {
+                oddNumbers.push_back(i);
+            }
+        }
+        // 对奇数和偶数进行从小到大排序
+        auto comparator = [](int a, int b) { return a > b; };
+        std::sort(oddNumbers.begin(), oddNumbers.end());
+        std::sort(evenNumbers.begin(), evenNumbers.end(), comparator);
+
+        std::vector<int> allNumbers;
+        allNumbers.insert(allNumbers.end(), oddNumbers.begin(), oddNumbers.end());
+        allNumbers.insert(allNumbers.end(), evenNumbers.begin(), evenNumbers.end());
+
+        // 凸包滤波器
+        std::vector<pcl::Vertices> polygons;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr surface_hull(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::Vertices vertics;
+        for (const auto& num : allNumbers) {
+            vertics.vertices.push_back(num);
+        }
+        polygons.push_back(vertics);
+        surface_hull = path_input;
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::CropHull<pcl::PointXYZ> bb_filter;
+        bb_filter.setDim(2);
+        bb_filter.setInputCloud(cloud_filtered);
+        bb_filter.setHullCloud(surface_hull);
+        bb_filter.setHullIndices(polygons);
+        bb_filter.setNegative(false);
+        bb_filter.filter(*cloud_hull);
+        cloud_trajectory = cloud_hull;
+        printf("filted ok...\n");
+
+        sensor_msgs::PointCloud2 cloud_trajectory_ros;
+        pcl::toROSMsg(*cloud_hull, cloud_trajectory_ros);
+        cloud_trajectory_ros.header.frame_id = "rslidar";
+        cloud_trajectory_ros.header.stamp = ros::Time::now();
+        trajectory_cloud_pub.publish(cloud_trajectory_ros);
+    }
+
+    /*--------------------------------------------------------------------------------*/
    private:
     ros::Subscriber odom_subscriber;
-    // ros::Publisher trajectory_publisher;
-    ros::Publisher marker_pub;
-    ros::Publisher marker_pub_in;
-    ros::Publisher marker_pub_out;
-    // geometry_msgs::Twist trajectory;
+    ros::Publisher trajectory_path_pub;
+    ros::Subscriber rslidar_subscriber;
+    ros::Publisher trajectory_cloud_pub;
+
+   private:
+    pcl::PointCloud<pcl::PointXYZ>::Ptr trajectory_point;  // 路径点云
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_rslidar;     // 雷达点云
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_trajectory;  // 障碍点云
 };
 
 int main(int argc, char** argv) {
@@ -130,14 +183,12 @@ int main(int argc, char** argv) {
     // 创建RobotController对象
     RobotController robot_controller;
     // 设置循环的频率为10Hz
-    ros::Rate loop_rate(10);  // 设置为1Hz
+    ros::Rate loop_rate(5);  // 设置为1Hz
     while (ros::ok()) {
+        // ros::spin();
         // 在循环中处理其他逻辑
-        // ...
-
         // 循环等待回调函数
         ros::spinOnce();
-
         // 控制循环的速率
         loop_rate.sleep();
     }

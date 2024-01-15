@@ -21,8 +21,8 @@ struct ROI {
     float min_x = -3.0;
     float max_y = 2.0;
     float min_y = -2.0;
-    float max_z = 1.5;
-    float min_z = -0.4;
+    float max_z = 2;//1.5
+    float min_z = -1;//-0.4
 } ROI;
 
 struct car_box {
