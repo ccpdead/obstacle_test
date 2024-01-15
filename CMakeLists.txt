@@ -18,6 +18,9 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   sensor_msgs
+  tf2_ros
+  tf2
+  tf
 
 )
 
@@ -178,17 +181,29 @@ target_link_libraries(path
                       ${PCL_LIBRARIES}
                       )
 
-add_executable(crophull_filter src/crophull_filter.cpp)
+add_executable(crophull_filter test/crophull_filter.cpp)
 target_link_libraries(crophull_filter
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )
 
-add_executable(saved_pcl src/saved_pcl.cpp)
+add_executable(saved_pcl test/saved_pcl.cpp)
 target_link_libraries(saved_pcl
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )
+
+add_executable(movebase_path test/movebase_path.cpp)
+target_link_libraries(movebase_path
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
+
+# add_executable(hhh src/hhh.cpp)
+# target_link_libraries(hhh
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
 #############
 ## Install ##
 #############
