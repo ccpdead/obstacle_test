@@ -21,9 +21,12 @@
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+float car_width = 0.05;
+
 class movebase_path {
    public:
-    movebase_path(ros::NodeHandle nh) {
+    movebase_path(tf2_ros::Buffer& tf_Buffer) : tf_(tf_Buffer) {
+        ros::NodeHandle nh;
         subPath = nh.subscribe("/move_base/local_plan", 1, &movebase_path::local_plan_callback, this);
         pubPath = nh.advertise<sensor_msgs::PointCloud2>("car_path", 1);
     };
@@ -38,21 +41,21 @@ class movebase_path {
     }
 
     std::vector<geometry_msgs::Point> transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg) {
-        tf2_ros::Buffer tfBuffer;                  // 使用tf进行坐标转换
-        tf2_ros::TransformListener tfListener(tfBuffer);  // 启动监听
         std::vector<geometry_msgs::Point> transformed_points;
         for (const auto& pose_stamped : msg->poses) {
             printf("pose_stamped.header.frame_id:%s\n", pose_stamped.header.frame_id.c_str());
             printf("pose_stamped.pose.position.x:%f\n", pose_stamped.pose.position.x);
             printf("pose_stamped.pose.position.y:%f\n", pose_stamped.pose.position.y);
-            printf("pose_stamped.pose.position.z:%f\n", pose_stamped.pose.position.z);
             geometry_msgs::PoseStamped pose_stamped_base_link;
             try {
-                tfBuffer.transform(pose_stamped, pose_stamped_base_link, "base_link");
+                tf_.transform(pose_stamped, pose_stamped_base_link, "base_link", ros::Duration(0.05));
             } catch (tf2::TransformException& ex) {
                 ROS_WARN("%s", ex.what());
-                continue;
+                // continue;
             }
+
+            printf("trans_x: %f\n", pose_stamped_base_link.pose.position.x);
+            printf("trans_y:%f---------------\n", pose_stamped_base_link.pose.position.y);
             transformed_points.push_back(pose_stamped_base_link.pose.position);
         }
 
@@ -61,20 +64,24 @@ class movebase_path {
 
     void publishPointCloud(const std::vector<geometry_msgs::Point>& points) {
         sensor_msgs::PointCloud2 point_cloud_msg;
-        point_cloud_msg.header.frame_id = "base_link";
-        point_cloud_msg.header.stamp = ros::Time::now();
-
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_pcl(new pcl::PointCloud<pcl::PointXYZ>);
-
         for (const auto& data : points) {
             pcl::PointXYZ point;
+            pcl::PointXYZ point_l;
+            pcl::PointXYZ point_r;
             point.x = data.x;
             point.y = data.y;
             point.z = data.z;
-            cloud_pcl->push_back(point);
-        }
 
+            point_l = point_r = point;
+            point_l.y = point_l.y - car_width;
+            point_r.y = point_r.y + car_width;
+            cloud_pcl->push_back(point_l);
+            cloud_pcl->push_back(point_r);
+        }
         pcl::toROSMsg(*cloud_pcl, point_cloud_msg);
+        point_cloud_msg.header.frame_id = "base_link";
+        point_cloud_msg.header.stamp = ros::Time::now();
         pubPath.publish(point_cloud_msg);
     }
 
@@ -82,11 +89,15 @@ class movebase_path {
     nav_msgs::Path::ConstPtr path;
     ros::Subscriber subPath;  // 订阅路径
     ros::Publisher pubPath;   // 发布路径
+    tf2_ros::Buffer& tf_;     // tf2_ros::Buffer的引用
 };
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "movebase_path");
     ros::NodeHandle nh;
-    movebase_path path_test(nh);
+
+    tf2_ros::Buffer tfBuffer;                         // 使用tf进行坐标转换
+    tf2_ros::TransformListener tfListener(tfBuffer);  // 启动监听
+    movebase_path path_test(tfBuffer);
     ros::spin();
 }
