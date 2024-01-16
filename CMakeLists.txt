@@ -199,6 +199,12 @@ target_link_libraries(movebase_path
                       ${PCL_LIBRARIES}
                       )
 
+add_executable(trajectory_test src/trajectory.cpp 
+                          src/trajectory_main.cpp)
+target_link_libraries(trajectory_test
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
 # add_executable(hhh src/hhh.cpp)
 # target_link_libraries(hhh
 #                       ${catkin_LIBRARIES}
