@@ -40,8 +40,6 @@ std::string lidar2_topic = "/mid360_back";
 ros::Publisher sync_lidar1;
 ros::Publisher sync_lidar2;
 ros::Publisher lidar_fusion;
-ros::Publisher marker_pub_car;
-ros::Publisher marker_pub_arm;
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> MySyncPolicy;
 
@@ -103,9 +101,6 @@ int main(int argc, char** argv) {
     sync_lidar1 = nh.advertise<sensor_msgs::PointCloud2>("/sync_topic_front", 100);
     sync_lidar2 = nh.advertise<sensor_msgs::PointCloud2>("/sync_topic_back", 100);
     lidar_fusion = nh.advertise<sensor_msgs::PointCloud2>("/lidar_fusion", 100);
-    marker_pub_car = nh.advertise<visualization_msgs::Marker>("marker_car", 10);
-    marker_pub_arm = nh.advertise<visualization_msgs::Marker>("marker_arm", 10);
-
     // 订阅的话题
     message_filters::Subscriber<sensor_msgs::PointCloud2> lidar1_sub(nh, lidar1_topic, 1);
     message_filters::Subscriber<sensor_msgs::PointCloud2> lidar2_sub(nh, lidar2_topic, 1);
@@ -119,3 +114,6 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+
+

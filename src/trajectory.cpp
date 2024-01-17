@@ -1,25 +1,27 @@
 #include "trajectory.h"
 
-namespace trajectory {
+namespace trajectory_nm {
 
-Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_)
-    :viewer(new pcl::visualization::PCLVisualizer("Point Cloud Viewer")) {
+Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_Buffer)
+    : tf_(tf_Buffer), viewer(new pcl::visualization::PCLVisualizer("Point Cloud Viewer")) {
     subPath = nh.subscribe("/move_base/DWAPlannerROS/local_plan", 1, &Trajectory::subPath_callback, this);
     subCloud = nh.subscribe("/velodyne_points", 1, &Trajectory::subCloud_callback, this);
+
+    pubPath = nh.advertise<sensor_msgs::PointCloud2>("car_path", 1);
+    pubCloud = nh.advertise<sensor_msgs::PointCloud2>("car_cloud", 1);
 
     init_data();
 
     std::thread t1(&Trajectory::process, this);
     t1.detach();
-
-    std::thread t2(&Trajectory::view_point, this);
-    t2.detach();
 };
 
 Trajectory::~Trajectory(){};
 void Trajectory::subPath_callback(const nav_msgs::Path::ConstPtr& msg) {
     // 保存转换坐标后的路径数据
     this->path_received = *msg;
+    transformed_points = this->transformPathToBaseLink(msg);
+    // view_point();
 };
 
 void Trajectory::subCloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
@@ -31,13 +33,25 @@ void Trajectory::subCloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg
 std::vector<geometry_msgs::Point> Trajectory::transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg) {
     std::vector<geometry_msgs::Point> transformed_points;
     for (const auto& pose_stamped : msg->poses) {
+        printf("befor\n");
+        printf("path x:%f\n", pose_stamped.pose.position.x);
+        printf("path y:%f\n", pose_stamped.pose.position.y);
+        printf("path z:%f\n", pose_stamped.pose.position.z);
+
         geometry_msgs::PoseStamped pose_stamped_base_link;
         try {
             tf_.transform(pose_stamped, pose_stamped_base_link, "base_link", ros::Duration(3));
         } catch (tf2::TransformException& ex) {
             ROS_WARN("%s", ex.what());
+            // continue;
         }
         transformed_points.push_back(pose_stamped_base_link.pose.position);
+    }
+    printf("after\n");
+    for (const auto& data : transformed_points) {
+        printf("x:%f\n", data.x);
+        printf("y:%f\n", data.y);
+        printf("z:%f\n", data.z);
     }
 
     return transformed_points;
@@ -115,11 +129,18 @@ void Trajectory::view_point() {
     viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 255, 0, 0, cloud_id);
     viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 8, cloud_id);
     viewer->addPolygon<pcl::PointXYZ>(this->cloud_path, 0, .069 * 255, 0.2 * 255, cloud_id, v2);
-    viewer->spinOnce(10);
+    viewer->spinOnce(0.1);
+    printf("cloud_path size:%d\n", this->cloud_path->size());
 }
 
 void Trajectory::init_data() {
-    this->car_width = 0.4f;
+    this->car_width = 0.04f;
+
+    this->cloud_currnet.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->path_current.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->cloud_hull_filetered.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->cloud_path.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->surface_hull.reset(new pcl::PointCloud<pcl::PointXYZ>);
 }
 
 void Trajectory::process() {
@@ -129,11 +150,24 @@ void Trajectory::process() {
             std::cout << "waiting for data" << std::endl;
             ros::Duration(1).sleep();
         }
-        // tf to base_link
-        std::vector<geometry_msgs::Point> transformed_points = transformPathToBaseLink(boost::shared_ptr<nav_msgs::Path>(&path_received));
-        // 2. 路径点云生成
-        path_calculation(transformed_points);
+        path_calculation(this->transformed_points);
+
+        //发布路径
+        sensor_msgs::PointCloud2 path_cloud;
+        pcl::toROSMsg(*this->surface_hull, path_cloud);
+        path_cloud.header.frame_id="base_link";
+        path_cloud.header.stamp =ros::Time::now();
+        pubPath.publish(path_cloud);
+        //发布滤波点云
+        sensor_msgs::PointCloud2 point_cloud_msg;
+        pcl::toROSMsg(*this->cloud_hull_filetered, point_cloud_msg);
+        point_cloud_msg.header.frame_id="base_link";
+        point_cloud_msg.header.stamp = ros::Time::now();
+        pubCloud.publish(point_cloud_msg);
+
+        // view_point();
+        ros::Duration(0.01).sleep();
     };
 }
 
-}  // namespace trajectory
+}  // namespace trajectory_nm

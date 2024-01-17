@@ -7,6 +7,7 @@
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
@@ -35,10 +36,9 @@ class movebase_path {
     void local_plan_callback(const nav_msgs::Path::ConstPtr& msg) {
         // 保存转换坐标后的路径数据
         std::vector<geometry_msgs::Point> transformed_points = transformPathToBaseLink(msg);
-
         publishPointCloud(transformed_points);
     }
-
+    /*tf转换*/
     std::vector<geometry_msgs::Point> transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg) {
         std::vector<geometry_msgs::Point> transformed_points;
         for (const auto& pose_stamped : msg->poses) {
@@ -53,7 +53,7 @@ class movebase_path {
 
         return transformed_points;
     }
-
+    
     void publishPointCloud(const std::vector<geometry_msgs::Point>& points) {
         sensor_msgs::PointCloud2 point_cloud_msg;
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_pcl(new pcl::PointCloud<pcl::PointXYZ>);
@@ -98,23 +98,24 @@ class movebase_path {
         allNumbers.insert(allNumbers.end(), oddNumbers.begin(), oddNumbers.end());
         allNumbers.insert(allNumbers.end(), evenNumbers.begin(), evenNumbers.end());
 
-        // 输出所有数
-        for (const auto& num : allNumbers) {
-            std::cout << num << " ";
-        }
-        std::cout << std::endl;
-        // 输出奇数
-        std::cout << "oddNumbers:" << std::endl;
-        for (const auto& num : oddNumbers) {
-            std::cout << num << " ";
-        }
-        std::cout << std::endl;
-        // 输出偶数
-        std::cout << "evenNumbers:" << std::endl;
-        for (const auto& num : evenNumbers) {
-            std::cout << num << " ";
-        }
-        std::cout << std::endl;
+        // // 输出所有数
+        // for (const auto& num : allNumbers) {
+        //     std::cout << num << " ";
+        // }
+        // std::cout << std::endl;
+        // // 输出奇数
+        // std::cout << "oddNumbers:" << std::endl;
+        // for (const auto& num : oddNumbers) {
+        //     std::cout << num << " ";
+        // }
+        // std::cout << std::endl;
+        // // 输出偶数
+        // std::cout << "evenNumbers:" << std::endl;
+        // for (const auto& num : evenNumbers) {
+        //     std::cout << num << " ";
+        // }
+        // std::cout << std::endl;
+
         pcl::PointCloud<pcl::PointXYZ>::Ptr view_point(new pcl::PointCloud<pcl::PointXYZ>);
         for (const auto& i : allNumbers) {
             view_point->push_back(input_cloud->points[i]);
@@ -140,7 +141,6 @@ class movebase_path {
     }
 
    private:
-    nav_msgs::Path::ConstPtr path;
     ros::Subscriber subPath;  // 订阅路径
     ros::Publisher pubPath;   // 发布路径
     tf2_ros::Buffer& tf_;     // tf2_ros::Buffer的引用

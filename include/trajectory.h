@@ -27,7 +27,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 
-namespace trajectory {
+namespace trajectory_nm {
 class Trajectory {
    public:
     Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_);
@@ -36,13 +36,16 @@ class Trajectory {
    private:
     ros::Subscriber subPath;   // 订阅路径
     ros::Subscriber subCloud;  // 订阅点云
-    tf2_ros::Buffer tf_;       // tf2_ros::Buffer的引用
+    ros::Publisher pubPath;    // 发布路径
+    ros::Publisher pubCloud;
+    tf2_ros::Buffer &tf_;       // tf2_ros::Buffer的引用
     pcl::visualization::PCLVisualizer::Ptr viewer;
     float car_width;
     std::vector<int> polygons;
     pcl::PointCloud<pcl::PointXYZ>::Ptr surface_hull;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull_filetered;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_path;
+    std::vector<geometry_msgs::Point> transformed_points;
 
    private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr path_current;   // 路径点云
