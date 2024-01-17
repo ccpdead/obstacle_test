@@ -162,11 +162,11 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(sync_test src/time_sync.cpp)
-target_link_libraries(sync_test
-                      ${catkin_LIBRARIES}
-                      ${PCL_LIBRARIES}
-                      )
+# add_executable(sync_test src/time_sync.cpp)
+# target_link_libraries(sync_test
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
 
 
 # add_executable(pcl_filter src/pcl_filter.cpp)
@@ -191,7 +191,7 @@ target_link_libraries(sync_test
 # target_link_libraries(saved_pcl
 #                       ${catkin_LIBRARIES}
 #                       ${PCL_LIBRARIES}
-                      )
+                      # )
 
 add_executable(movebase_path test/movebase_path.cpp)
 target_link_libraries(movebase_path
@@ -202,6 +202,12 @@ target_link_libraries(movebase_path
 add_executable(trajectory_test src/trajectory.cpp 
                           src/trajectory_main.cpp)
 target_link_libraries(trajectory_test
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
+
+add_executable(box_path test/box_path.cpp)
+target_link_libraries(box_path
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )
