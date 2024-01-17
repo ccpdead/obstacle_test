@@ -96,6 +96,11 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& lidar1, const sensor_msgs:
 int main(int argc, char** argv) {
     ros::init(argc, argv, "time_sync");
     ros::NodeHandle nh;
+    ros::NodeHandle nh_param("~");
+    nh_param.param<double>("max_x",ROI.max_x,10.0);
+    
+
+
     printf("ros init ok!....\r\n");
     // 发布的话题
     sync_lidar1 = nh.advertise<sensor_msgs::PointCloud2>("/sync_topic_front", 100);

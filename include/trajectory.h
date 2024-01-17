@@ -22,6 +22,7 @@
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <geometry_msgs/Twist.h>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
@@ -38,6 +39,7 @@ class Trajectory {
     ros::Subscriber subCloud;  // 订阅点云
     ros::Publisher pubPath;    // 发布路径
     ros::Publisher pubCloud;
+    ros::Publisher pubCmd;
     tf2_ros::Buffer &tf_;       // tf2_ros::Buffer的引用
     pcl::visualization::PCLVisualizer::Ptr viewer;
     float car_width;

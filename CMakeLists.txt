@@ -175,22 +175,22 @@ target_link_libraries(sync_test
 #                       ${PCL_LIBRARIES}
 #                       )
 
-add_executable(path src/path.cpp)
-target_link_libraries(path
-                      ${catkin_LIBRARIES}
-                      ${PCL_LIBRARIES}
-                      )
+# add_executable(path src/path.cpp)
+# target_link_libraries(path
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
 
-add_executable(crophull_filter test/crophull_filter.cpp)
-target_link_libraries(crophull_filter
-                      ${catkin_LIBRARIES}
-                      ${PCL_LIBRARIES}
-                      )
+# add_executable(crophull_filter test/crophull_filter.cpp)
+# target_link_libraries(crophull_filter
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
 
-add_executable(saved_pcl test/saved_pcl.cpp)
-target_link_libraries(saved_pcl
-                      ${catkin_LIBRARIES}
-                      ${PCL_LIBRARIES}
+# add_executable(saved_pcl test/saved_pcl.cpp)
+# target_link_libraries(saved_pcl
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
                       )
 
 add_executable(movebase_path test/movebase_path.cpp)
@@ -205,11 +205,7 @@ target_link_libraries(trajectory_test
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )
-# add_executable(hhh src/hhh.cpp)
-# target_link_libraries(hhh
-#                       ${catkin_LIBRARIES}
-#                       ${PCL_LIBRARIES}
-#                       )
+
 #############
 ## Install ##
 #############
