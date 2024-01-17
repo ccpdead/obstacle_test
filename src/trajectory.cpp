@@ -4,8 +4,8 @@ namespace trajectory_nm {
 
 Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_Buffer)
     : tf_(tf_Buffer), viewer(new pcl::visualization::PCLVisualizer("Point Cloud Viewer")) {
-    subPath = nh.subscribe("/move_base/DWAPlannerROS/local_plan", 1, &Trajectory::subPath_callback, this);
-    subCloud = nh.subscribe("/velodyne_points", 1, &Trajectory::subCloud_callback, this);
+    subPath = nh.subscribe("/move_base/local_plan", 1, &Trajectory::subPath_callback, this);
+    subCloud = nh.subscribe("/lidar_fusion", 1, &Trajectory::subCloud_callback, this);
 
     pubPath = nh.advertise<sensor_msgs::PointCloud2>("car_path", 1);
     pubCloud = nh.advertise<sensor_msgs::PointCloud2>("car_cloud", 1);
@@ -33,26 +33,26 @@ void Trajectory::subCloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg
 std::vector<geometry_msgs::Point> Trajectory::transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg) {
     std::vector<geometry_msgs::Point> transformed_points;
     for (const auto& pose_stamped : msg->poses) {
-        printf("befor\n");
-        printf("path x:%f\n", pose_stamped.pose.position.x);
-        printf("path y:%f\n", pose_stamped.pose.position.y);
-        printf("path z:%f\n", pose_stamped.pose.position.z);
+        // printf("befor\n");
+        // printf("path x:%f\n", pose_stamped.pose.position.x);
+        // printf("path y:%f\n", pose_stamped.pose.position.y);
+        // printf("path z:%f\n", pose_stamped.pose.position.z);
 
         geometry_msgs::PoseStamped pose_stamped_base_link;
         try {
-            tf_.transform(pose_stamped, pose_stamped_base_link, "base_link", ros::Duration(3));
+            tf_.transform(pose_stamped, pose_stamped_base_link, "lidar_link", ros::Duration(3));
         } catch (tf2::TransformException& ex) {
             ROS_WARN("%s", ex.what());
             // continue;
         }
         transformed_points.push_back(pose_stamped_base_link.pose.position);
     }
-    printf("after\n");
-    for (const auto& data : transformed_points) {
-        printf("x:%f\n", data.x);
-        printf("y:%f\n", data.y);
-        printf("z:%f\n", data.z);
-    }
+    // printf("after\n");
+    // for (const auto& data : transformed_points) {
+    //     printf("x:%f\n", data.x);
+    //     printf("y:%f\n", data.y);
+    //     printf("z:%f\n", data.z);
+    // }
 
     return transformed_points;
 }
@@ -117,7 +117,7 @@ void Trajectory::crophull_filter() {
     polygon_extract.setHullIndices(polygons);
     polygon_extract.setNegative(false);
     polygon_extract.filter(*this->cloud_hull_filetered);
-    printf("filetered ok .....\n");
+    // printf("filetered ok .....\n");
 }
 
 void Trajectory::view_point() {
@@ -155,18 +155,32 @@ void Trajectory::process() {
         //发布路径
         sensor_msgs::PointCloud2 path_cloud;
         pcl::toROSMsg(*this->surface_hull, path_cloud);
-        path_cloud.header.frame_id="base_link";
+        path_cloud.header.frame_id="lidar_link";
         path_cloud.header.stamp =ros::Time::now();
         pubPath.publish(path_cloud);
         //发布滤波点云
         sensor_msgs::PointCloud2 point_cloud_msg;
         pcl::toROSMsg(*this->cloud_hull_filetered, point_cloud_msg);
-        point_cloud_msg.header.frame_id="base_link";
+        point_cloud_msg.header.frame_id="lidar_link";
         point_cloud_msg.header.stamp = ros::Time::now();
         pubCloud.publish(point_cloud_msg);
 
+        //打印平均距离
+        float x_average = 0.0f;
+        for(const auto&data:cloud_hull_filetered->points){
+            printf("x:%f\n",data.x);
+            printf("y:%f\n",data.y);
+            printf("z:%f\n",data.z);
+            x_average+=data.x;
+            x_average=x_average/cloud_hull_filetered->size();
+        }
+        printf("trajectory x distance: ---%f---\n",x_average);
+
+
+        cloud_hull_filetered->clear();
+
         // view_point();
-        ros::Duration(0.01).sleep();
+        ros::Duration(0.1).sleep();
     };
 }
 

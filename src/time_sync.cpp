@@ -90,7 +90,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& lidar1, const sensor_msgs:
     pcl::toROSMsg(pcl_roi, fusedCloud);
     fusedCloud.header.frame_id = "mid360_frame";
     lidar_fusion.publish(fusedCloud);
-    // printf("fusedCloud size:%d\r\n", fusedCloud.data.size());
+    printf("fusedCloud size:%d\r\n", fusedCloud.data.size());
 }
 
 int main(int argc, char** argv) {
