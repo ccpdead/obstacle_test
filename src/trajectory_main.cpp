@@ -15,12 +15,5 @@ int main(int argc, char* argv[]) {
     }else{
       ros::spin();
     }
-
-    // trajectory_nm::Trajectory trajectory_(nh_, tfBuffer);
-    // while (ros::ok()) {
-    //     ros::spinOnce();
-    //     // trajectory_.view_point();
-    //     ros::Duration(0.01).sleep();
-    // }
     return 0;
 }

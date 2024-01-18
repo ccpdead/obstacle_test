@@ -15,6 +15,9 @@
 #include <pcl/io/io.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
 #include <pcl/surface/concave_hull.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -49,14 +52,16 @@ class Trajectory {
     ~Trajectory();
 
    private:
-    ros::Subscriber subPath;   // 订阅路径
-    ros::Subscriber subCloud;  // 订阅点云
-    ros::Publisher pubPath;    // 发布路径
-    ros::Publisher pubCloud;
-    ros::Publisher pubCmd;
-    tf2_ros::Buffer& tf_;  // tf2_ros::Buffer的引用
+    ros::Subscriber subPath;      // 订阅路径
+    ros::Subscriber subCloud;     // 订阅点云
+    ros::Publisher pubPath;       // 发布路径
+    ros::Publisher pubCloud;      // 滤波后的点云
+    ros::Publisher pubCmd;        // 发布速度指令
+    ros::Publisher filted_point;  // 发布滤波的四个点云点
+    tf2_ros::Buffer& tf_;         // tf2_ros::Buffer的引用
     // pcl::visualization::PCLVisualizer::Ptr viewer;
-    float car_width;
+    double halfWidth;
+    double halfLength;
     std::vector<int> polygons;                                 // 凸包索引
     pcl::PointCloud<pcl::PointXYZ>::Ptr surface_hull;          // 凸包
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull_filetered;  // 检测到的障碍点云
@@ -70,14 +75,14 @@ class Trajectory {
     nav_msgs::Path path_received;                        // 接收到的路径
 
    public:
-    void subPath_callback(const nav_msgs::Path::ConstPtr& msg);             // 路径回调函数
-    void subCloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg);  // 点云回调函数
-    void process();                                                         // 处理函数
-    void view_point();                                                      // 可视化
-    void init_data();                                                       // 初始化数据
-    std::vector<geometry_msgs::Pose> transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg);//路径点tf转换
+    void subPath_callback(const nav_msgs::Path::ConstPtr& msg);                                     // 路径回调函数
+    void subCloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg);                          // 点云回调函数
+    void process();                                                                                 // 处理函数
+    void view_point();                                                                              // 可视化
+    void init_data();                                                                               // 初始化数据
+    std::vector<geometry_msgs::Pose> transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg);  // 路径点tf转换
     void path_calculation(const std::vector<geometry_msgs::Pose>& points);
-    void crophull_filter();
+    void crophull_filter(std::vector<pcl::PointIndices>&point_index);
     void box_compute(const geometry_msgs::Pose& center, std::vector<BoXPoint>& box_point);
 };
 }  // namespace trajectory_nm
