@@ -10,7 +10,7 @@ Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_Buffer)
 
     pubPath = nh.advertise<sensor_msgs::PointCloud2>("car_path", 1);
     pubCloud = nh.advertise<sensor_msgs::PointCloud2>("car_cloud", 1);
-    pubCmd = nh.advertise<geometry_msgs::Twist>("cmd_stop", 1);
+    pubCmd = nh.advertise<geometry_msgs::Twist>("cmd_vel_stop", 1);
     filted_point = nh.advertise<sensor_msgs::PointCloud2>("filted_point", 1);
 
     init_data();

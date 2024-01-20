@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(pcl_filter)
+project(obstacle_test)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -162,11 +162,11 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-# add_executable(sync_test src/time_sync.cpp)
-# target_link_libraries(sync_test
-#                       ${catkin_LIBRARIES}
-#                       ${PCL_LIBRARIES}
-#                       )
+add_executable(sync_test src/time_sync.cpp)
+target_link_libraries(sync_test
+                      ${catkin_LIBRARIES}
+                      ${PCL_LIBRARIES}
+                      )
 
 
 # add_executable(pcl_filter src/pcl_filter.cpp)
@@ -199,9 +199,9 @@ target_link_libraries(movebase_path
                       ${PCL_LIBRARIES}
                       )
 
-add_executable(trajectory_test src/trajectory.cpp 
+add_executable(obstacle_node src/trajectory.cpp 
                           src/trajectory_main.cpp)
-target_link_libraries(trajectory_test
+target_link_libraries(obstacle_node
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )
