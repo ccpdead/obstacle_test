@@ -193,11 +193,11 @@ target_link_libraries(sync_test
 #                       ${PCL_LIBRARIES}
                       # )
 
-add_executable(movebase_path test/movebase_path.cpp)
-target_link_libraries(movebase_path
-                      ${catkin_LIBRARIES}
-                      ${PCL_LIBRARIES}
-                      )
+# add_executable(movebase_path test/movebase_path.cpp)
+# target_link_libraries(movebase_path
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
 
 add_executable(obstacle_test src/trajectory.cpp 
                           src/trajectory_main.cpp)
