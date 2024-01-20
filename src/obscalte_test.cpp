@@ -1,14 +1,15 @@
-#include "trajectory.h"
+#include "obscalte_test.h"
+
+double halfWidth;
+double halfLength;
 
 namespace trajectory_nm {
-
 Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_Buffer)
     : tf_(tf_Buffer) /*, viewer(new pcl::visualization::PCLVisualizer("Point Cloud Viewer"))*/
 {
-
     ros::NodeHandle nh_param("~");
-    nh_param.param<double>("halfLength", this->halfLength, 1.3);
-    nh_param.param<double>("halfWidth", this->halfWidth, 0.68);
+    nh_param.param<double>("halfLength", halfLength, 1.3);
+    nh_param.param<double>("halfWidth", halfWidth, 0.68);
     subPath = nh.subscribe("/move_base/local_plan", 1, &Trajectory::subPath_callback, this);
     subCloud = nh.subscribe("/lidar_fusion", 1, &Trajectory::subCloud_callback, this);
 
@@ -59,10 +60,10 @@ void Trajectory::box_compute(const geometry_msgs::Pose& center, std::vector<BoXP
     double yaw = tf2::getYaw(center.orientation);
 
     // 计算四个角绝对坐标
-    shift.push_back({centerX + this->halfWidth * cos(yaw) - this->halfLength * sin(yaw), centerY + this->halfWidth * sin(yaw) + this->halfLength * cos(yaw)});
-    shift.push_back({centerX - this->halfWidth * cos(yaw) - this->halfLength * sin(yaw), centerY - this->halfWidth * sin(yaw) + this->halfLength * cos(yaw)});
-    shift.push_back({centerX - this->halfWidth * cos(yaw) + this->halfLength * sin(yaw), centerY - this->halfWidth * sin(yaw) - this->halfLength * cos(yaw)});
-    shift.push_back({centerX + this->halfWidth * cos(yaw) + this->halfLength * sin(yaw), centerY + this->halfWidth * sin(yaw) - this->halfLength * cos(yaw)});
+    shift.push_back({centerX + halfWidth * cos(yaw) - halfLength * sin(yaw), centerY + halfWidth * sin(yaw) + halfLength * cos(yaw)});
+    shift.push_back({centerX - halfWidth * cos(yaw) - halfLength * sin(yaw), centerY - halfWidth * sin(yaw) + halfLength * cos(yaw)});
+    shift.push_back({centerX - halfWidth * cos(yaw) + halfLength * sin(yaw), centerY - halfWidth * sin(yaw) - halfLength * cos(yaw)});
+    shift.push_back({centerX + halfWidth * cos(yaw) + halfLength * sin(yaw), centerY + halfWidth * sin(yaw) - halfLength * cos(yaw)});
 }
 
 /*根据路径生成车辆形式的路径*/

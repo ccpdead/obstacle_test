@@ -1,5 +1,5 @@
-#ifndef __TRAJECTORY_H__
-#define __TRAJECTORY_H__
+#ifndef __TRAJECTORY_TEST_H__
+#define __TRAJECTORY_TEST_H__
 /**
  * 1. 点云数据融合
  * 2. 点云ROI选取
@@ -60,8 +60,6 @@ class Trajectory {
     ros::Publisher filted_point;  // 发布滤波的四个点云点
     tf2_ros::Buffer& tf_;         // tf2_ros::Buffer的引用
     // pcl::visualization::PCLVisualizer::Ptr viewer;
-    double halfWidth;
-    double halfLength;
     std::vector<int> polygons;                                 // 凸包索引
     pcl::PointCloud<pcl::PointXYZ>::Ptr surface_hull;          // 凸包
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull_filetered;  // 检测到的障碍点云
@@ -82,7 +80,7 @@ class Trajectory {
     void init_data();                                                                               // 初始化数据
     std::vector<geometry_msgs::Pose> transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg);  // 路径点tf转换
     void path_calculation(const std::vector<geometry_msgs::Pose>& points);
-    void crophull_filter(std::vector<pcl::PointIndices>&point_index);
+    void crophull_filter(std::vector<pcl::PointIndices>& point_index);
     void box_compute(const geometry_msgs::Pose& center, std::vector<BoXPoint>& box_point);
 };
 }  // namespace trajectory_nm

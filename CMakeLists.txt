@@ -3,8 +3,7 @@ project(obstacle_test)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
-ADD_COMPILE_OPTIONS(-std=c++11 )
-ADD_COMPILE_OPTIONS(-std=c++14 )
+ADD_COMPILE_OPTIONS(-std=c++17 )
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -199,8 +198,8 @@ target_link_libraries(sync_test
 #                       ${PCL_LIBRARIES}
 #                       )
 
-add_executable(obstacle_test src/trajectory.cpp 
-                          src/trajectory_main.cpp)
+add_executable(obstacle_test src/obscalte_test.cpp 
+                          src/obscalte_test_main.cpp)
 target_link_libraries(obstacle_test
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}

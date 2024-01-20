@@ -1,4 +1,4 @@
-#include "trajectory.h"
+#include "obscalte_test.h"
 
 int main(int argc, char* argv[]) {
     ros::init(argc, argv, "trajectory_leapting");
