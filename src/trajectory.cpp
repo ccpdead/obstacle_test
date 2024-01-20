@@ -5,6 +5,10 @@ namespace trajectory_nm {
 Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_Buffer)
     : tf_(tf_Buffer) /*, viewer(new pcl::visualization::PCLVisualizer("Point Cloud Viewer"))*/
 {
+
+    ros::NodeHandle nh_param("~");
+    nh_param.param<double>("halfLength", this->halfLength, 1.3);
+    nh_param.param<double>("halfWidth", this->halfWidth, 0.68);
     subPath = nh.subscribe("/move_base/local_plan", 1, &Trajectory::subPath_callback, this);
     subCloud = nh.subscribe("/lidar_fusion", 1, &Trajectory::subCloud_callback, this);
 
@@ -147,8 +151,6 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
 }
 /*初始化数据*/
 void Trajectory::init_data() {
-    this->halfLength = 1.3;
-    this->halfWidth = 0.68;
     this->cloud_received.reset(new pcl::PointCloud<pcl::PointXYZ>);
     this->path_current.reset(new pcl::PointCloud<pcl::PointXYZ>);
     this->cloud_hull_filetered.reset(new pcl::PointCloud<pcl::PointXYZ>);

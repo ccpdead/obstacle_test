@@ -199,9 +199,9 @@ target_link_libraries(movebase_path
                       ${PCL_LIBRARIES}
                       )
 
-add_executable(obstacle_node src/trajectory.cpp 
+add_executable(obstacle_test src/trajectory.cpp 
                           src/trajectory_main.cpp)
-target_link_libraries(obstacle_node
+target_link_libraries(obstacle_test
                       ${catkin_LIBRARIES}
                       ${PCL_LIBRARIES}
                       )

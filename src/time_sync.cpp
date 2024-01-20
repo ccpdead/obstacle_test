@@ -17,21 +17,21 @@
 
 // 定义ROI区域
 struct ROI {
-    float max_x = 10.0;
-    float min_x = -10;   //-5
-    float max_y = 10.0;   // 6
-    float min_y = -10.0;  // 6
-    float max_z = 1.5;   // 1.5
-    float min_z = -0.4;  //-0.4
+    double max_x = 10.0;
+    double min_x = -10;   //-5
+    double max_y = 10.0;   // 6
+    double min_y = -10.0;  // 6
+    double max_z = 1.5;   // 1.5
+    double min_z = -0.4;  //-0.4
 } ROI;
 
 struct car_box {
-    float car_max_x = 1.35;
-    float car_min_x = -1.35;
-    float car_max_y = 0.75;
-    float car_min_y = -0.75;
-    float car_max_z = 0.5;
-    float car_min_z = -0.5;
+    double car_max_x = 1.35;
+    double car_min_x = -1.35;
+    double car_max_y = 0.75;
+    double car_min_y = -0.75;
+    double car_max_z = 0.5;
+    double car_min_z = -0.5;
 } car_box;
 
 std::string lidar1_topic = "/mid360_front";
@@ -96,6 +96,23 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "time_sync");
     ros::NodeHandle nh;
     printf("ros init ok!....\r\n");
+
+    ros::NodeHandle nh_param("~");
+    nh_param.param<double>("max_x", ROI.max_x, 10.0);
+    nh_param.param<double>("min_x", ROI.min_x, -10.0);
+    nh_param.param<double>("max_y", ROI.max_y, 10.0);
+    nh_param.param<double>("min_y", ROI.min_y, -10.0);
+    nh_param.param<double>("max_z", ROI.max_z, 1.5);
+    nh_param.param<double>("min_z", ROI.min_z, -0.4);
+
+    nh_param.param<double>("car_max_x", car_box.car_max_x, 1.35);
+    nh_param.param<double>("car_min_x", car_box.car_min_x, -1.35);
+    nh_param.param<double>("car_max_y", car_box.car_max_y, 0.75);
+    nh_param.param<double>("car_min_y", car_box.car_min_y, -0.75);
+    nh_param.param<double>("car_max_z", car_box.car_max_z, 0.5);
+    nh_param.param<double>("car_min_z", car_box.car_min_z, -0.5);
+    printf("param init ok.....\r\n");
+    
     // 发布的话题
     sync_lidar1 = nh.advertise<sensor_msgs::PointCloud2>("/sync_topic_front", 100);
     sync_lidar2 = nh.advertise<sensor_msgs::PointCloud2>("/sync_topic_back", 100);
