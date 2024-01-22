@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
-  <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch"/>
+  <!-- <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch"/> -->
 
   <node name="cloud_fusion" pkg="obstacle_test" type="sync_test" output="screen">
     max_x: 10.0
