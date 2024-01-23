@@ -4,24 +4,28 @@
   <!-- <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch"/> -->
 
   <node name="cloud_fusion" pkg="obstacle_test" type="sync_test" output="screen">
-    max_x: 10.0
-    min_x: -10.0
-    max_y: 10.0
-    min_y: -10.0
-    max_z: 1.5
-    min_z: -0.4
+    <rosparam subst_value="true"> 
+      max_x: 8
+      min_x: -8
+      max_y: 8
+      min_y: -8
+      max_z: 1.5
+      min_z: -0.4
 
-    car_max_x: 1.4     <!--1.35-->
-    car_min_x: -1.4    <!---1.35-->
-    car_max_y: 0.8    <!--0.75-->
-    car_min_y: -0.8    <!---0.75-->
-    car_max_z: 0.5    <!--0.5-->
-    car_min_z: -0.5    <!---0.5-->
+      car_max_x: 1.4                                               <!--1.35-->
+      car_min_x: -1.4                                              <!---1.35-->
+      car_max_y: 0.8                                              <!--0.75-->
+      car_min_y: -0.8                                              <!---0.75-->
+      car_max_z: 0.5                                              <!--0.5-->
+      car_min_z: -0.5                                              <!---0.5-->
+    </rosparam>
   </node>
 
   <node name="trajectory_path" pkg="obstacle_test" type="obstacle_test" output="screen">
-    halfLength: 1.15
-    halfWidth: 0.68
+    <rosparam subst_value="true"> 
+      halfLength: 1.15       <!--1.15-->
+      halfWidth: 0.68        <!--0.68 -->
+    </rosparam>
   </node>
 
 

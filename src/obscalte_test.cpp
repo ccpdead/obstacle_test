@@ -8,8 +8,8 @@ Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_Buffer)
     : tf_(tf_Buffer) /*, viewer(new pcl::visualization::PCLVisualizer("Point Cloud Viewer"))*/
 {
     ros::NodeHandle nh_param("~");
-    nh_param.param<double>("halfLength", halfLength, 1.3);
-    nh_param.param<double>("halfWidth", halfWidth, 0.68);
+    nh_param.param<double>("halfLength", halfLength, 0.5);
+    nh_param.param<double>("halfWidth", halfWidth, 0.8);
     subPath = nh.subscribe("/move_base/local_plan", 1, &Trajectory::subPath_callback, this);
     subCloud = nh.subscribe("/lidar_fusion", 1, &Trajectory::subCloud_callback, this);
 
@@ -59,10 +59,10 @@ void Trajectory::box_compute(const geometry_msgs::Pose& center, std::vector<BoXP
     double centerY = center.position.y;
     double yaw = tf2::getYaw(center.orientation);
     // 计算四个角绝对坐标
-    shift.push_back({centerX + halfWidth * cos(yaw) - halfLength * sin(yaw), centerY + halfWidth * sin(yaw) + halfLength * cos(yaw)});
-    shift.push_back({centerX - halfWidth * cos(yaw) - halfLength * sin(yaw), centerY - halfWidth * sin(yaw) + halfLength * cos(yaw)});
-    shift.push_back({centerX - halfWidth * cos(yaw) + halfLength * sin(yaw), centerY - halfWidth * sin(yaw) - halfLength * cos(yaw)});
-    shift.push_back({centerX + halfWidth * cos(yaw) + halfLength * sin(yaw), centerY + halfWidth * sin(yaw) - halfLength * cos(yaw)});
+    shift.push_back({centerX + halfLength * cos(yaw) - halfWidth * sin(yaw), centerY + halfLength * sin(yaw) + halfWidth * cos(yaw)});
+    shift.push_back({centerX - halfLength * cos(yaw) - halfWidth * sin(yaw), centerY - halfLength * sin(yaw) + halfWidth * cos(yaw)});
+    shift.push_back({centerX - halfLength * cos(yaw) + halfWidth * sin(yaw), centerY - halfLength * sin(yaw) - halfWidth * cos(yaw)});
+    shift.push_back({centerX + halfLength * cos(yaw) + halfWidth * sin(yaw), centerY + halfLength * sin(yaw) - halfWidth * cos(yaw)});
 }
 
 /*根据路径生成车辆形式的路径*/
@@ -117,14 +117,14 @@ void Trajectory::marker_pub(float car_min_x,
     // 位置
     car_marker.pose.position.x = (car_min_x + car_max_x) / 2;
     car_marker.pose.position.y = (car_min_y + car_max_y) / 2;
-    car_marker.pose.position.z = 0.0;
+    car_marker.pose.position.z = 0.5;
     car_marker.pose.orientation.x = 0.0;
     car_marker.pose.orientation.y = 0.0;
     car_marker.pose.orientation.z = 0.0;
     car_marker.pose.orientation.w = 1.0;
     // 尺寸
-    car_marker.scale.x = halfWidth * 2;
-    car_marker.scale.y = halfLength * 2;
+    car_marker.scale.x = halfLength * 2;
+    car_marker.scale.y = halfWidth * 2;
     car_marker.scale.z = 0.5;
     // 颜色
     car_marker.color.r = 0.0f;
@@ -133,6 +133,7 @@ void Trajectory::marker_pub(float car_min_x,
     car_marker.color.a = 0.5;
     car_marker.lifetime = ros::Duration(0);
     car_marker_pub.publish(car_marker);  // 发布marker
+    printf("length:%.2f width:%.2f\n", car_marker.scale.y, car_marker.scale.x);
 }
 
 // void Trajectory::view_point() {
@@ -149,6 +150,7 @@ void Trajectory::marker_pub(float car_min_x,
 // }
 /*滤波器*/
 void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
+    this->cloud_hull_filetered->clear();
     pcl::CropBox<pcl::PointXYZ> crop;
     crop.setInputCloud(this->cloud_received);
     crop.setNegative(false);
@@ -157,8 +159,6 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
         crop.setMin(Eigen::Vector4f(box_shift_list.xmin, box_shift_list.ymin, -0.5, 1.0));
         crop.setMax(Eigen::Vector4f(box_shift_list.xmax, box_shift_list.ymax, 0.5, 1.0));
         crop.filter(*this->cloud_hull_filetered);
-        printf("xmin:%.2f, xmax:%.2f, ymin:%.2f, ymax:%.2f\n", box_shift_list.xmin, box_shift_list.xmax, box_shift_list.ymin, box_shift_list.ymax);
-        printf("cloud_hull_filetered size:%d\n", this->cloud_hull_filetered->size());
 
         // 发布滤波使用的角点
         pcl::PointCloud<pcl::PointXYZ>::Ptr filte_point_pcl(new pcl::PointCloud<pcl::PointXYZ>);
@@ -169,7 +169,11 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
         filte_point_ros.header.frame_id = "base_footprint";
         filte_point_ros.header.stamp = ros::Time::now();
 
-        if (cloud_hull_filetered->size() > 10) {
+        if (cloud_hull_filetered->size() > 20) {
+            printf("xmin:%.2f, xmax:%.2f, ymin:%.2f, ymax:%.2f\n", box_shift_list.xmin, box_shift_list.xmax, box_shift_list.ymin,
+                   box_shift_list.ymax);
+            printf("cloud_hull_filetered size:%d\n", this->cloud_hull_filetered->size());
+
             // 聚类算法检测障碍物数量
             pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
             tree->setInputCloud(cloud_hull_filetered);
@@ -184,9 +188,9 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
             ec.extract(point_index);
             if (point_index.size() > 0) {
                 filted_point.publish(filte_point_ros);
-                marker_pub(box_shift_list.xmin, box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax, 0, 0, 0, 0);
                 printf("KDTREE size: %d.........\n", point_index.size());
-                break;
+                marker_pub(box_shift_list.xmin, box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax, 0, 0, 0, 0);
+                // break;
             }
         }
     }
