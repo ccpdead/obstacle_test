@@ -20,7 +20,7 @@
   </node>
 
   <node name="trajectory_path" pkg="obstacle_test" type="obstacle_test" output="screen">
-    halfLength: 1.3
+    halfLength: 1.15
     halfWidth: 0.68
   </node>
 

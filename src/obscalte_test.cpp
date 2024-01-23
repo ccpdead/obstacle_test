@@ -242,6 +242,7 @@ void Trajectory::process() {
         printf("trajecotry_min_x: %.2f.......\n", trajectory_min_x);
         if (trajectory_min_x < 1.7) {
             cmd_stop.linear.x = 0.0;
+            cmd_stop.angular.z = 0.0;
             pubCmd.publish(cmd_stop);
         } else if (trajectory_min_x >= 1.7 && trajectory_min_x < 3.5) {
             cmd_stop.linear.x = 0.05;
