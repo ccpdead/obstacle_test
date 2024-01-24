@@ -205,11 +205,11 @@ target_link_libraries(obstacle_test
                       ${PCL_LIBRARIES}
                       )
 
-add_executable(box_path test/box_path.cpp)
-target_link_libraries(box_path
-                      ${catkin_LIBRARIES}
-                      ${PCL_LIBRARIES}
-                      )
+# add_executable(box_path test/box_path.cpp)
+# target_link_libraries(box_path
+#                       ${catkin_LIBRARIES}
+#                       ${PCL_LIBRARIES}
+#                       )
 
 #############
 ## Install ##
