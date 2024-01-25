@@ -44,6 +44,7 @@ struct BoxShift {
     double xmax;
     double ymin;
     double ymax;
+    geometry_msgs::Pose center;
 };
 
 namespace trajectory_nm {
@@ -91,7 +92,8 @@ class Trajectory {
                     float arm_min_x,
                     float arm_max_x,
                     float arm_min_y,
-                    float arm_max_y);
+                    float arm_max_y,
+                    geometry_msgs::Pose center);
 };
 }  // namespace trajectory_nm
 

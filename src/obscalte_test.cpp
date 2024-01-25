@@ -26,6 +26,8 @@ Trajectory::Trajectory(ros::NodeHandle nh, tf2_ros::Buffer& tf_Buffer)
 };
 
 Trajectory::~Trajectory(){};
+
+/***********************************************************************/
 void Trajectory::subPath_callback(const nav_msgs::Path::ConstPtr& msg) {
     // 保存转换坐标后的路径数据
     this->path_received = *msg;
@@ -43,17 +45,17 @@ std::vector<geometry_msgs::Pose> Trajectory::transformPathToBaseLink(const nav_m
     for (const auto& pose_stamped : msg->poses) {
         geometry_msgs::PoseStamped pose_stamped_base_link;
         try {
-            tf_.transform(pose_stamped, pose_stamped_base_link, "base_footprint", ros::Duration(3));
+            tf_.transform(pose_stamped, pose_stamped_base_link, "base_link", ros::Duration(3));
         } catch (tf2::TransformException& ex) {
             ROS_WARN("%s", ex.what());
         }
-        transformed_points.push_back(pose_stamped_base_link.pose);
+        this->transformed_points.push_back(pose_stamped_base_link.pose);
     }
     // printf("transformed_points size: %d\n", transformed_points.size());
     return transformed_points;
 }
 
-/*根据中心点计算滤波矩形*/
+/*根据中心点计算滤波矩形四个角点*/
 void Trajectory::box_compute(const geometry_msgs::Pose& center, std::vector<BoXPoint>& shift) {
     double centerX = center.position.x;
     double centerY = center.position.y;
@@ -67,7 +69,6 @@ void Trajectory::box_compute(const geometry_msgs::Pose& center, std::vector<BoXP
 
 /*根据路径生成车辆形式的路径*/
 void Trajectory::path_calculation(const std::vector<geometry_msgs::Pose>& points) {
-    // printf("path path_calculation\n");
     for (const auto& point : points) {
         std::vector<BoXPoint> shift;
         // 根据路径计算角点
@@ -76,19 +77,20 @@ void Trajectory::path_calculation(const std::vector<geometry_msgs::Pose>& points
         float xmin, ymin, xmax, ymax;
         xmin = ymin = shift.at(0).x;
         xmax = ymax = shift.at(0).y;
-        for (const auto& box_shift_list : shift) {
-            if (box_shift_list.x < xmin)
-                xmin = box_shift_list.x;
-            if (box_shift_list.y < ymin)
-                ymin = box_shift_list.y;
-            if (box_shift_list.x > xmax)
-                xmax = box_shift_list.x;
-            if (box_shift_list.y > ymax)
-                ymax = box_shift_list.y;
+        for (const auto& shift_list : shift) {
+            if (shift_list.x < xmin)
+                xmin = shift_list.x;
+            if (shift_list.y < ymin)
+                ymin = shift_list.y;
+            if (shift_list.x > xmax)
+                xmax = shift_list.x;
+            if (shift_list.y > ymax)
+                ymax = shift_list.y;
         }
-        this->box_shift.push_back({xmin, xmax, ymin, ymax});
-        // printf("xmin:%.2f, xmax:%.2f, ymin:%.2f, ymax:%.2f\n", xmin, xmax, ymin, ymax);
+        // 保存角点
+        this->box_shift.push_back({xmin, xmax, ymin, ymax, point});
         for (const auto& data : shift) {
+            // 保存路径
             this->cloud_path->push_back(pcl::PointXYZ(data.x, data.y, 0));
         }
     }
@@ -104,11 +106,12 @@ void Trajectory::marker_pub(float car_min_x,
                             float arm_min_x,
                             float arm_max_x,
                             float arm_min_y,
-                            float arm_max_y) {
+                            float arm_max_y,
+                            geometry_msgs::Pose center) {
     visualization_msgs::Marker car_marker;
     visualization_msgs::Marker arm_marker;
 
-    car_marker.header.frame_id = "base_footprint";
+    car_marker.header.frame_id = "base_link";
     car_marker.header.stamp = ros::Time::now();
     car_marker.ns = "car";
     car_marker.id = 0;
@@ -131,9 +134,9 @@ void Trajectory::marker_pub(float car_min_x,
     car_marker.color.g = 1.0f;
     car_marker.color.b = 0.0f;
     car_marker.color.a = 0.5;
-    car_marker.lifetime = ros::Duration(0);
+    car_marker.lifetime = ros::Duration(1);
     car_marker_pub.publish(car_marker);  // 发布marker
-    printf("length:%.2f width:%.2f\n", car_marker.scale.y, car_marker.scale.x);
+    // printf("length:%.2f width:%.2f\n", car_marker.scale.y, car_marker.scale.x);
 }
 
 // void Trajectory::view_point() {
@@ -148,9 +151,9 @@ void Trajectory::marker_pub(float car_min_x,
 //     viewer->spinOnce(0.1);
 //     printf("cloud_path size:%d\n", this->cloud_path->size());
 // }
-/*滤波器*/
+
 void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
-    this->cloud_hull_filetered->clear();
+    // this->cloud_hull_filetered->clear();
     pcl::CropBox<pcl::PointXYZ> crop;
     crop.setInputCloud(this->cloud_received);
     crop.setNegative(false);
@@ -160,18 +163,10 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
         crop.setMax(Eigen::Vector4f(box_shift_list.xmax, box_shift_list.ymax, 0.5, 1.0));
         crop.filter(*this->cloud_hull_filetered);
 
-        // 发布滤波使用的角点
-        pcl::PointCloud<pcl::PointXYZ>::Ptr filte_point_pcl(new pcl::PointCloud<pcl::PointXYZ>);
-        filte_point_pcl->push_back(pcl::PointCloud<pcl::PointXYZ>::PointType(box_shift_list.xmin, box_shift_list.ymin, 0));
-        filte_point_pcl->push_back(pcl::PointCloud<pcl::PointXYZ>::PointType(box_shift_list.xmax, box_shift_list.ymax, 0));
-        sensor_msgs::PointCloud2 filte_point_ros;
-        pcl::toROSMsg(*filte_point_pcl, filte_point_ros);
-        filte_point_ros.header.frame_id = "base_footprint";
-        filte_point_ros.header.stamp = ros::Time::now();
-
+        // 如果检测到障碍物，进行聚类算法检测
         if (cloud_hull_filetered->size() > 20) {
-            printf("xmin:%.2f, xmax:%.2f, ymin:%.2f, ymax:%.2f\n", box_shift_list.xmin, box_shift_list.xmax, box_shift_list.ymin,
-                   box_shift_list.ymax);
+            printf("xmax:%.2f, ymax:%.2f, xmin:%.2f, ymin:%.2f\n", box_shift_list.xmax, box_shift_list.ymax, box_shift_list.xmin,
+                   box_shift_list.ymin);
             printf("cloud_hull_filetered size:%d\n", this->cloud_hull_filetered->size());
 
             // 聚类算法检测障碍物数量
@@ -187,21 +182,23 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
             // std::vector<pcl::PointIndices> clustr_indices;
             ec.extract(point_index);
             if (point_index.size() > 0) {
-                filted_point.publish(filte_point_ros);
                 printf("KDTREE size: %d.........\n", point_index.size());
-                marker_pub(box_shift_list.xmin, box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax, 0, 0, 0, 0);
-                // break;
+                // 发布滤波使用的角点
+                pcl::PointCloud<pcl::PointXYZ>::Ptr pub_shift(new pcl::PointCloud<pcl::PointXYZ>);
+                pub_shift->push_back(pcl::PointCloud<pcl::PointXYZ>::PointType(box_shift_list.xmin, box_shift_list.ymin, 0));
+                pub_shift->push_back(pcl::PointCloud<pcl::PointXYZ>::PointType(box_shift_list.xmax, box_shift_list.ymax, 0));
+                sensor_msgs::PointCloud2 shift_box_ros;
+                pcl::toROSMsg(*pub_shift, shift_box_ros);
+                shift_box_ros.header.frame_id = "base_link";
+                shift_box_ros.header.stamp = ros::Time::now();
+                filted_point.publish(shift_box_ros);
+                pub_shift->clear();
+                marker_pub(box_shift_list.xmin, box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax, 0, 0, 0, 0, box_shift_list.center);
+                break;
             }
         }
     }
-}
-/*初始化数据*/
-void Trajectory::init_data() {
-    this->cloud_received.reset(new pcl::PointCloud<pcl::PointXYZ>);
-    this->path_current.reset(new pcl::PointCloud<pcl::PointXYZ>);
-    this->cloud_hull_filetered.reset(new pcl::PointCloud<pcl::PointXYZ>);
-    this->cloud_path.reset(new pcl::PointCloud<pcl::PointXYZ>);
-    this->surface_hull.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->box_shift.clear();
 }
 
 // 多线程处理函数
@@ -214,25 +211,27 @@ void Trajectory::process() {
             ros::Duration(1).sleep();
         }
         std::vector<pcl::PointIndices> point_index;
+        // 1. 计算路径
         path_calculation(this->transformed_points);
+        // 2. 滤波
         crophull_filter(point_index);
 
         // 发布路径
         sensor_msgs::PointCloud2 path_cloud;
         pcl::toROSMsg(*this->cloud_path, path_cloud);
-        path_cloud.header.frame_id = "base_footprint";
+        path_cloud.header.frame_id = "base_link";
         path_cloud.header.stamp = ros::Time::now();
         pubPath.publish(path_cloud);
         cloud_path->clear();
         // 发布滤波点云
         sensor_msgs::PointCloud2 point_cloud_msg;
         pcl::toROSMsg(*this->cloud_hull_filetered, point_cloud_msg);
-        point_cloud_msg.header.frame_id = "base_footprint";
+        point_cloud_msg.header.frame_id = "base_link";
         point_cloud_msg.header.stamp = ros::Time::now();
         pubCloud.publish(point_cloud_msg);
 
         // 计算最近点云距离
-        float trajectory_min_x = 0.0;
+        float trajectory_min_x = -1;
         for (const auto& data : point_index) {
             float point_x_min = cloud_hull_filetered->points.at(data.indices.at(0)).x;
             for (int index : data.indices) {
@@ -243,19 +242,29 @@ void Trajectory::process() {
             trajectory_min_x = point_x_min;
         }
 
-        printf("trajecotry_min_x: %.2f.......\n", trajectory_min_x);
-        if (trajectory_min_x < 1.7) {
+        if (trajectory_min_x <= 2.0 && trajectory_min_x > 0.0) {
             cmd_stop.linear.x = 0.0;
             cmd_stop.angular.z = 0.0;
             pubCmd.publish(cmd_stop);
-        } else if (trajectory_min_x >= 1.7 && trajectory_min_x < 3.5) {
+            printf("trajecotry_min_x2.0: %.2f.......\n", trajectory_min_x);
+        } else if (trajectory_min_x >= 2.0 && trajectory_min_x < 4.0) {
             cmd_stop.linear.x = 0.05;
             pubCmd.publish(cmd_stop);
+            printf("trajecotry_min_x4.0: %.2f.......\n", trajectory_min_x);
         }
 
         cloud_hull_filetered->clear();
-        ros::Duration(0.2).sleep();
+        ros::Duration(0.1).sleep();
     };
+}
+
+/*初始化数据*/
+void Trajectory::init_data() {
+    this->cloud_received.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->path_current.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->cloud_hull_filetered.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->cloud_path.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    this->surface_hull.reset(new pcl::PointCloud<pcl::PointXYZ>);
 }
 
 }  // namespace trajectory_nm
