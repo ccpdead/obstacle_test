@@ -92,9 +92,9 @@ void Trajectory::path_calculation(const std::vector<geometry_msgs::Pose>& points
             }
         }
         // 保存角点
-        this->box_shift.push_back({shift.at(0).x, shift.at(0).y, shift.at(index).x, shift.at(index).y, point});
-        // printf("x:%2f,y:%2f,x2:%.2f,y2:%.2f,M_dis:%.2f,index:%d\n", shift.at(0).x, shift.at(0).y, shift.at(index).x, shift.at(index).y, Mdistance,
-            //    index);
+        this->box_shift.push_back({shift.at(index).x, shift.at(index).y,shift.at(0).x, shift.at(0).y, point});
+        printf("x:%2f,y:%2f,x2:%.2f,y2:%.2f,M_dis:%.2f,index:%d\n", shift.at(0).x, shift.at(0).y, shift.at(index).x, shift.at(index).y, Mdistance,
+               index);
         for (const auto& data : shift) {
             // 保存路径
             this->cloud_path->push_back(pcl::PointXYZ(data.x, data.y, 0));
@@ -166,6 +166,11 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
         crop.setMin(Eigen::Vector4f(box_shift_list.xmin, box_shift_list.ymin, -0.5, 1.0));
         crop.setMax(Eigen::Vector4f(box_shift_list.xmax, box_shift_list.ymax, 0.5, 1.0));
         crop.filter(*this->cloud_hull_filetered);
+
+        //-----------
+        printf("box_shift_list.xmin:%.2f, box_shift_list.ymin:%.2f, box_shift_list.xmax:%.2f, box_shift_list.ymax:%.2f\n", box_shift_list.xmin,
+               box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax);
+        //-----------
 
         // 如果检测到障碍物，进行聚类算法检测
         if (cloud_hull_filetered->size() > 20) {
