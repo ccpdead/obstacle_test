@@ -93,8 +93,8 @@ void Trajectory::path_calculation(const std::vector<geometry_msgs::Pose>& points
         }
         // 保存角点
         this->box_shift.push_back({shift.at(index).x, shift.at(index).y,shift.at(0).x, shift.at(0).y, point});
-        printf("x:%2f,y:%2f,x2:%.2f,y2:%.2f,M_dis:%.2f,index:%d\n", shift.at(0).x, shift.at(0).y, shift.at(index).x, shift.at(index).y, Mdistance,
-               index);
+        // printf("x:%2f,y:%2f,x2:%.2f,y2:%.2f,M_dis:%.2f,index:%d\n", shift.at(0).x, shift.at(0).y, shift.at(index).x, shift.at(index).y, Mdistance,
+        //        index);
         for (const auto& data : shift) {
             // 保存路径
             this->cloud_path->push_back(pcl::PointXYZ(data.x, data.y, 0));
@@ -124,8 +124,8 @@ void Trajectory::marker_pub(float car_min_x,
     car_marker.type = visualization_msgs::Marker::CUBE;
     car_marker.action = visualization_msgs::Marker::ADD;
     // 位置
-    car_marker.pose.position.x = (car_min_x + car_max_x) / 2;
-    car_marker.pose.position.y = (car_min_y + car_max_y) / 2;
+    car_marker.pose.position.x = center.position.x;
+    car_marker.pose.position.y = center.position.y;
     car_marker.pose.position.z = 0.5;
     car_marker.pose.orientation.x = center.orientation.x;
     car_marker.pose.orientation.y = center.orientation.y;
@@ -134,7 +134,7 @@ void Trajectory::marker_pub(float car_min_x,
     // 尺寸
     car_marker.scale.x = halfLength * 2;
     car_marker.scale.y = halfWidth * 2;
-    car_marker.scale.z = 0.5;
+    car_marker.scale.z = 1;
     // 颜色
     car_marker.color.r = 0.0f;
     car_marker.color.g = 1.0f;
@@ -166,12 +166,14 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
     for (const auto& box_shift_list : this->box_shift) {
         crop.setMin(Eigen::Vector4f(-1.25, -0.72, -0.5, 1.0));
         crop.setMax(Eigen::Vector4f(1.25, 0.72, 0.4, 1.0));
+        crop.setTransform(Eigen::Affine3f(Eigen::Translation3f(-box_shift_list.center.position.x, -box_shift_list.center.position.y, 0)));
         crop.setRotation(Eigen::Vector3f(0, 0, tf2::getYaw(box_shift_list.center.orientation)));
-        crop.setTransform(Eigen::Affine3f(Eigen::Translation3f(box_shift_list.center.position.x, box_shift_list.center.position.y, 0)));
         crop.filter(*this->cloud_hull_filetered);
         //-----------
-        printf("box_shift_list.xmin:%.2f, box_shift_list.ymin:%.2f, box_shift_list.xmax:%.2f, box_shift_list.ymax:%.2f\n", box_shift_list.xmin,
-               box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax);
+        // printf("box_shift_list.xmin:%.2f, box_shift_list.ymin:%.2f, box_shift_list.xmax:%.2f, box_shift_list.ymax:%.2f\n", box_shift_list.xmin,
+        //        box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax);
+        printf("x:%.2f,y:%.2f,yaw:%.2f\n", box_shift_list.center.position.x, box_shift_list.center.position.y,
+               tf2::getYaw(box_shift_list.center.orientation));
         //-----------
 
         // 如果检测到障碍物，进行聚类算法检测
