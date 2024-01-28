@@ -84,6 +84,8 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& lidar1, const sensor_msgs:
     crop.setNegative(true);                                                                      // Set to true to remove points inside the box
     crop.filter(pcl_roi);
 
+    
+
     // 将合并后的点云数据发布到lidar_fusion话题
     sensor_msgs::PointCloud2 fusedCloud;
     pcl::toROSMsg(pcl_roi, fusedCloud);
