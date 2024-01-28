@@ -161,12 +161,14 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
     pcl::CropBox<pcl::PointXYZ> crop;
     crop.setInputCloud(this->cloud_received);
     crop.setNegative(false);
+    printf("filtered....\n");
     // 遍历所有矩形框进行滤波，然后利用聚类算法计算是否存在障碍物
     for (const auto& box_shift_list : this->box_shift) {
-        crop.setMin(Eigen::Vector4f(box_shift_list.xmin, box_shift_list.ymin, -0.5, 1.0));
-        crop.setMax(Eigen::Vector4f(box_shift_list.xmax, box_shift_list.ymax, 0.5, 1.0));
+        crop.setMin(Eigen::Vector4f(-1.25, -0.72, -0.5, 1.0));
+        crop.setMax(Eigen::Vector4f(1.25, 0.72, 0.4, 1.0));
+        crop.setRotation(Eigen::Vector3f(0, 0, tf2::getYaw(box_shift_list.center.orientation)));
+        crop.setTransform(Eigen::Affine3f(Eigen::Translation3f(box_shift_list.center.position.x, box_shift_list.center.position.y, 0)));
         crop.filter(*this->cloud_hull_filetered);
-
         //-----------
         printf("box_shift_list.xmin:%.2f, box_shift_list.ymin:%.2f, box_shift_list.xmax:%.2f, box_shift_list.ymax:%.2f\n", box_shift_list.xmin,
                box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax);
