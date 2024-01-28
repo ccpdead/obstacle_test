@@ -33,7 +33,7 @@ void Trajectory::subPath_callback(const nav_msgs::Path::ConstPtr& msg) {
     // 保存转换坐标后的路径数据
 
     this->path_received = *msg;
-    transformed_points = this->transformPathToBaseLink(msg);
+    this->transformed_points = this->transformPathToBaseLink(msg);
 };
 void Trajectory::subCloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
     // printf("cloud received ....\n");
@@ -43,7 +43,7 @@ void Trajectory::subCloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg
 /***********************************************************************/
 std::vector<geometry_msgs::Pose> Trajectory::transformPathToBaseLink(const nav_msgs::Path::ConstPtr& msg) {
     // printf("frame:%s\n", msg->header.frame_id.c_str());
-    std::vector<geometry_msgs::Pose> transformed_points;
+    std::vector<geometry_msgs::Pose> pose;
     for (const auto& pose_stamped : msg->poses) {
         geometry_msgs::PoseStamped pose_stamped_base_link;
         try {
@@ -51,10 +51,10 @@ std::vector<geometry_msgs::Pose> Trajectory::transformPathToBaseLink(const nav_m
         } catch (tf2::TransformException& ex) {
             ROS_WARN("%s", ex.what());
         }
-        transformed_points.push_back(pose_stamped_base_link.pose);
+        pose.push_back(pose_stamped_base_link.pose);
     }
-    printf("transformed_points size: %d\n", transformed_points.size());
-    return transformed_points;
+    // printf("transformed_points size: %d\n", transformed_points.size());
+    return pose;
 }
 
 /*根据中心点计算滤波矩形四个角点*/
@@ -70,6 +70,10 @@ void Trajectory::box_compute(const geometry_msgs::Pose& center, std::vector<BoXP
     shift.push_back({centerX + halfLength * cos(yaw) + halfWidth * sin(yaw), centerY + halfLength * sin(yaw) - halfWidth * cos(yaw)});
 }
 
+double calculateDistance(BoXPoint p1, BoXPoint p2) {
+    return std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));
+}
+
 /*根据路径生成车辆形式的路径*/
 void Trajectory::path_calculation(const std::vector<geometry_msgs::Pose>& points) {
     for (const auto& point : points) {
@@ -77,22 +81,20 @@ void Trajectory::path_calculation(const std::vector<geometry_msgs::Pose>& points
         // 根据路径计算角点
         // printf("path calculation.... \n");
         box_compute(point, shift);
-        // 计算矩形的最大最小值
-        float xmin, ymin, xmax, ymax;
-        xmin = ymin = shift.at(0).x;
-        xmax = ymax = shift.at(0).y;
-        for (const auto& shift_list : shift) {
-            if (shift_list.x < xmin)
-                xmin = shift_list.x;
-            if (shift_list.y < ymin)
-                ymin = shift_list.y;
-            if (shift_list.x > xmax)
-                xmax = shift_list.x;
-            if (shift_list.y > ymax)
-                ymax = shift_list.y;
+        // 计算矩形的对角点
+        float Mdistance = 0;
+        int index = 0;
+        for (int i = 1; i < 4; i++) {
+            float distance = calculateDistance(shift.at(0), shift.at(i));
+            if (distance > Mdistance) {
+                index = i;
+                Mdistance = distance;
+            }
         }
         // 保存角点
-        this->box_shift.push_back({xmin, xmax, ymin, ymax});
+        this->box_shift.push_back({shift.at(0).x, shift.at(0).y, shift.at(index).x, shift.at(index).y, point});
+        // printf("x:%2f,y:%2f,x2:%.2f,y2:%.2f,M_dis:%.2f,index:%d\n", shift.at(0).x, shift.at(0).y, shift.at(index).x, shift.at(index).y, Mdistance,
+            //    index);
         for (const auto& data : shift) {
             // 保存路径
             this->cloud_path->push_back(pcl::PointXYZ(data.x, data.y, 0));
@@ -110,7 +112,8 @@ void Trajectory::marker_pub(float car_min_x,
                             float arm_min_x,
                             float arm_max_x,
                             float arm_min_y,
-                            float arm_max_y) {
+                            float arm_max_y,
+                            geometry_msgs::Pose center) {
     visualization_msgs::Marker car_marker;
     visualization_msgs::Marker arm_marker;
 
@@ -124,10 +127,10 @@ void Trajectory::marker_pub(float car_min_x,
     car_marker.pose.position.x = (car_min_x + car_max_x) / 2;
     car_marker.pose.position.y = (car_min_y + car_max_y) / 2;
     car_marker.pose.position.z = 0.5;
-    car_marker.pose.orientation.x = 0.0;
-    car_marker.pose.orientation.y = 0.0;
-    car_marker.pose.orientation.z = 0.0;
-    car_marker.pose.orientation.w = 1.0;
+    car_marker.pose.orientation.x = center.orientation.x;
+    car_marker.pose.orientation.y = center.orientation.y;
+    car_marker.pose.orientation.z = center.orientation.z;
+    car_marker.pose.orientation.w = center.orientation.w;
     // 尺寸
     car_marker.scale.x = halfLength * 2;
     car_marker.scale.y = halfWidth * 2;
@@ -194,7 +197,7 @@ void Trajectory::crophull_filter(std::vector<pcl::PointIndices>& point_index) {
                 shift_box_ros.header.stamp = ros::Time::now();
                 filted_point.publish(shift_box_ros);
                 pub_shift->clear();
-                marker_pub(box_shift_list.xmin, box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax, 0, 0, 0, 0);
+                marker_pub(box_shift_list.xmin, box_shift_list.ymin, box_shift_list.xmax, box_shift_list.ymax, 0, 0, 0, 0, box_shift_list.center);
                 break;
             }
         }
@@ -257,7 +260,6 @@ void Trajectory::process() {
             pubCmd.publish(cmd_stop);
             printf("trajecotry_min_x2.0: %.2f.......\n", trajectory_min_x);
         } else if (trajectory_min_x >= 2.0 && trajectory_min_x < 4.0) {
-            cmd_stop.linear.x = 0.05;
             pubCmd.publish(cmd_stop);
             printf("trajecotry_min_x4.0: %.2f.......\n", trajectory_min_x);
         }
